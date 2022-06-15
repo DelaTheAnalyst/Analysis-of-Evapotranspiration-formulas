@@ -1,0 +1,146 @@
+library(readxl)
+library(readxl)
+library(readr)
+library(ggplot2)
+library(dplyr)
+library(TSA)
+library(tseries)
+library(scales)
+install.packages("ggplot2")
+install.packages("dplyr")
+#library(readxl)
+
+
+
+
+evapo <- read.csv("C:/Users/DELALI/Desktop/evapo workpiece-----2.csv")
+View(evapo)
+
+
+Pean_man<- function(delta,Rn,G,psychometric,Ta,Uz,Es,Ea){
+  ET<-(((0.408*delta)*(Rn-G))+(psychometric*Uz*(900/(Ta+273))*(Es-Ea)))/(delta+(psychometric*(1+(0.34*Uz))))
+
+  return(ET)
+}
+
+Pean_man(evapo$X..DELTA.constant,evapo$Rn..Rns.Rnl,evapo$G,evapo$psychometric...,evapo$Ta,evapo$U2,evapo$Es,evapo$Ea)
+penman<-Pean_man(evapo$X..DELTA.constant,evapo$Rn..Rns.Rnl,evapo$G,evapo$psychometric...,evapo$Ta,evapo$U2,evapo$Es,evapo$Ea)
+
+###############
+blaney <- read.csv("C:/Users/DELALI/Desktop/blaney criddle.csv")
+
+b_criddle<-function(k,p,Tmean){
+  ET = (k*p)*(0.46*Tmean+8.13)
+  return(ET)
+}
+
+
+b_criddle(blaney$k,blaney$p.daytime.hours.,blaney$Ta.mea.temp.)
+
+############
+hagreaves_M <- read.csv("C:/Users/DELALI/Desktop/Hargreaves & MAKKINK  Method.csv")
+#View(hagreaves_M)
+har_method<-function(a,Ra,TD,Ta){
+  
+  ETH<-(a*Ra*TD^0.5)*(Ta+17.8)
+  return(ETH)
+}
+
+har_method(hagreaves_M $a,hagreaves_M$Ra,hagreaves_M$TD,hagreaves_M$Ta)
+###############
+
+Makkink_M <- read.csv("C:/Users/DELALI/Desktop/Makkink.csv")
+
+mak_method<-function(delts,y,N,Rs){
+  ETM<-((0.61*(delts/(delts+y)*(Rs/N))-0.12))
+        return(ETM)
+  
+}
+  
+ 
+
+
+
+
+mak_method(Makkink_M$X.,Makkink_M$X..1,Makkink_M$X..2,Makkink_M$Rs)
+
+###########
+
+Priestly_M<-read.csv("C:/Users/DELALI/Desktop/Priestly Taylor.csv")
+
+p_Method<-function(alpha,delta,Y,N,Rn) {
+  ETP<- (alpha*(delta/delta+Y))*(Rn/N)
+  return(ETP)
+}
+p_Method(Priestly_M$X.  , Priestly_M$X..1 ,Priestly_M$X..2,Priestly_M$X..3 , Priestly_M$Rn..Rns.Rnl)
+
+##Qconstant REFERS TO THE TRANGLE CONSTANT- slope of the vapour pressure
+##Yconstant refers to the Y form of constant-
+##u2_Wind_speed refers to the wind speed 
+##radiatio refers to the net radiation of the crop surface
+##soil_flux refers to the soil heat flux
+##TMEAN refers to temperature  mean 
+##pscho_c refers psychometric constant
+
+
+
+
+
+#blaney <- read.csv("C:/Users/DELALI/Desktop/blaney criddle.csv")
+
+b_criddle<-function(k,p,Tmean){
+  ET = (k*p)*(0.46*Tmean+8.13)
+  return(ET)
+}
+
+
+blanney<-b_criddle(evapo$k,evapo$p.daytime.hours.,evapo$Ta)
+
+############
+hagreaves_M <- read.csv("C:/Users/DELALI/Desktop/Hargreaves & MAKKINK  Method.csv")
+View(hagreaves_M)
+har_method<-function(a,Ra,TD,Ta){
+  
+  ETH<-(a*Ra*TD^0.5)*(Ta+17.8)
+  return(ETH)
+}
+
+hargreaves<-har_method(evapo$a,evapo$Ra,evapo$TD,evapo$Ta)
+
+
+###############
+
+#MAKKIK
+
+mak_method<-function(delta,y,N,Rs){
+  ETM<-(0.7*(delta/(delta+y))*(Rs/N))
+        return(ETM)
+  
+}
+  
+ 
+makkink<-mak_method(evapo$X..DELTA.constant,evapo$psychometric...,evapo$X...constantN,evapo$Rs)
+
+str(makkink)
+
+
+###########PRIESTLY _tAYLOR####
+
+
+p_Method<-function(alpha,delta,Y,N,Rn) {
+  ETP<- (alpha*(delta/delta+Y))*(Rn/N)
+  return(ETP)
+}
+taylor<-p_Method(evapo$alpha...,evapo$X..DELTA.constant,evapo$psychometric...,evapo$X...constantN,evapo$Rn..Rns.Rnl)
+
+#######
+#
+
+table_eva<-cbind(penman,blanney,hargreaves,makkink,taylor)
+View(table_eva)
+months<-evapo$Date
+
+date<-as.Date(months,"mm")
+tab<-data.frame(months,penman,blanney,hargreaves,makkink,taylor)
+str(table_eva)
+
