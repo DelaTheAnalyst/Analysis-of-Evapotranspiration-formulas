@@ -1,146 +1,199 @@
 library(readxl)
-library(readxl)
 library(readr)
 library(ggplot2)
 library(dplyr)
 library(TSA)
 library(tseries)
 library(scales)
+library(TSA)
+library(tseries)
+library(forecast)
+library(lmtest)
+library(fBasic)
+library(stringr)
+library(moments)
+
+install.packages("moments")
+library(installr)
 install.packages("ggplot2")
 install.packages("dplyr")
+install.packages("tidyverse")
+
 #library(readxl)
+#evapo_workpiece <- read_excel("C:/Users/DELALI/Desktop/")
 
 
+evapo <- read.csv("C:/Users/DELALI/Desktop/dr oboubie/evapoNEW.csv")
+#View(evapo)
 
 
-evapo <- read.csv("C:/Users/DELALI/Desktop/evapo workpiece-----2.csv")
-View(evapo)
-
-
-Pean_man<- function(delta,Rn,G,psychometric,Ta,Uz,Es,Ea){
-  ET<-(((0.408*delta)*(Rn-G))+(psychometric*Uz*(900/(Ta+273))*(Es-Ea)))/(delta+(psychometric*(1+(0.34*Uz))))
+Pean_man<- function(delta,Rn,psychometric,Ta,Uz,Es,Ea){
+  ET<-(((0.408*delta)*(Rn))+(psychometric*Uz*(900/(Ta+273))*(Es-Ea)))/(delta+(psychometric*(1+(0.34*Uz))))
 
   return(ET)
 }
 
-Pean_man(evapo$X..DELTA.constant,evapo$Rn..Rns.Rnl,evapo$G,evapo$psychometric...,evapo$Ta,evapo$U2,evapo$Es,evapo$Ea)
-penman<-Pean_man(evapo$X..DELTA.constant,evapo$Rn..Rns.Rnl,evapo$G,evapo$psychometric...,evapo$Ta,evapo$U2,evapo$Es,evapo$Ea)
+##G the soil heat flux is not used in this Penman equation because
+##soil flux for daily temperatures is approximately zero so averaging for a month is also zero
 
+
+penman<-Pean_man(evapo$X...constant,evapo$Rn..Rns.Rnl,evapo$psychometric...,evapo$Ta,evapo$U2,evapo$Es,evapo$Ea)
+#View(penman)
 ###############
 blaney <- read.csv("C:/Users/DELALI/Desktop/blaney criddle.csv")
 
 b_criddle<-function(k,p,Tmean){
-  ET = (k*p)*(0.46*Tmean+8.13)
-  return(ET)
+  ETB = (k*p)*((0.46*Tmean)+8.13)
+  return(ETB)
 }
 
 
-b_criddle(blaney$k,blaney$p.daytime.hours.,blaney$Ta.mea.temp.)
+blanney<-b_criddle(evapo$k,evapo$p.daytime.hours.,evapo$Ta)
+
+
+##Blanney Criddle method has very large values than normal so perhap 
+##is unfit for computation at this station
+
+
 
 ############
 hagreaves_M <- read.csv("C:/Users/DELALI/Desktop/Hargreaves & MAKKINK  Method.csv")
 #View(hagreaves_M)
-har_method<-function(a,Ra,TD,Ta){
+har_method<-function(Rs,Ta){
   
-  ETH<-(a*Ra*TD^0.5)*(Ta+17.8)
+  ETH<-(Rs*0.0135)*(Ta +17.8)
   return(ETH)
 }
 
-har_method(hagreaves_M $a,hagreaves_M$Ra,hagreaves_M$TD,hagreaves_M$Ta)
+hargreaves<-har_method(evapo$Rs,evapo$Ta)
+
 ###############
 
-Makkink_M <- read.csv("C:/Users/DELALI/Desktop/Makkink.csv")
+#MAKKINK
 
-mak_method<-function(delts,y,N,Rs){
-  ETM<-((0.61*(delts/(delts+y)*(Rs/N))-0.12))
+mak_method<-function(delta,y,Rs){
+  ETM<-(0.61*((delta/(delta+y))*Rs)-0.12)
         return(ETM)
   
 }
   
  
+makkink<-mak_method(evapo$X...constant,evapo$psychometric...,evapo$Rs)
 
 
 
 
-mak_method(Makkink_M$X.,Makkink_M$X..1,Makkink_M$X..2,Makkink_M$Rs)
+###########PRIESTLY _TAYLOR####
 
-###########
-
-Priestly_M<-read.csv("C:/Users/DELALI/Desktop/Priestly Taylor.csv")
 
 p_Method<-function(alpha,delta,Y,N,Rn) {
   ETP<- (alpha*(delta/delta+Y))*(Rn/N)
   return(ETP)
 }
-p_Method(Priestly_M$X.  , Priestly_M$X..1 ,Priestly_M$X..2,Priestly_M$X..3 , Priestly_M$Rn..Rns.Rnl)
+taylor<-p_Method(evapo$a,evapo$X...constant,evapo$psychometric...,evapo$X...constantN,evapo$Rn..Rns.Rnl)
 
-##Qconstant REFERS TO THE TRANGLE CONSTANT- slope of the vapour pressure
+#######
+
+Jensen_<-function(Rs,Tmean){
+  ETj = (Rs)*((0.0252*Tmean)+0.078)
+  return(ETj)
+}
+
+
+JENSEN<-Jensen_(evapo$Rs,evapo$Ta)
+
+
+
+
+
+
+#table_eva<-cbind(penman,blanney,hargreaves,makkink,taylor)
+
+
+##Arranging the various Evapotranspiration Formulas in a dataframe
+tab<-data.frame(penman,hargreaves,makkink,taylor,JENSEN)
+
+
+
+
+
+
+
+##This is the time series plot of the various evapotranspiration of te various formular
+
+
+timeseries<-ts(tab)
+
+##Twelve month time period
+Time <-(1:12)
+head(Time)
+
+
+###Comparing the various Evapotranspiration formulas in a plot
+
+ggplot()+
+  geom_line(data = tab,mapping = aes(Time,penman),colour = "black")+
+  geom_line(data = tab,mapping = aes(Time,hargreaves),colour = "orange")+
+  geom_line(data = tab,mapping = aes(Time,JENSEN),colour = "red")+
+  geom_line(data = tab,mapping = aes(Time,makkink),colour = "blue")+
+  geom_line(data = tab,mapping = aes(Time,taylor),colour = "green")
+
+ggplot()+
+  geom_line(data = tab,mapping = aes(Time,hargreaves),colour  = "orange" ,lty = 1)+
+  geom_line(data = tab,mapping = aes(Time,JENSEN),colour = "red",lty = 2)+
+  geom_line(data = tab,mapping = aes(Time,makkink),colour = "blue",lty = 3)+
+  geom_line(data = tab,mapping = aes(Time,taylor),colour = "green",lty = 4)
+
+
+
+
+
+
+
+#####Creating a linear regression and writing a linear equation 
+###This has been presented in the word document
+
+
+##Penman and Makkink
+plot(penman~makkink)
+limmod1 =lm(penman~makkink)
+abline(limmod1, col ="red")
+cor.test(penman,makkink)
+
+
+##Penman and hargreaves
+plot(penman~hargreaves)
+limmod2 =lm(penman~hargreaves)
+abline(limmod2, col ="red")
+
+cor(penman,hargreaves)
+cor.test(penman,hargreaves)
+
+##Penman and Taylor
+plot(penman~taylor)
+limmod3 =lm(penman~taylor)
+abline(limmod3, col ="red")
+cor(penman,taylor)
+cor.test(penman,taylor)
+
+##Penman and blanney
+plot(penman~JENSEN)
+limmod4 =lm(penman~JENSEN)
+abline(limmod4, col ="red")
+cor(penman,JENSEN)
+
+cor.test(penman,JENSEN)
+
+
+
+
+
+
+ ##Qconstant REFERS TO THE TRANGLE CONSTANT- slope of the vapour pressure
 ##Yconstant refers to the Y form of constant-
 ##u2_Wind_speed refers to the wind speed 
 ##radiatio refers to the net radiation of the crop surface
 ##soil_flux refers to the soil heat flux
 ##TMEAN refers to temperature  mean 
 ##pscho_c refers psychometric constant
-
-
-
-
-
-#blaney <- read.csv("C:/Users/DELALI/Desktop/blaney criddle.csv")
-
-b_criddle<-function(k,p,Tmean){
-  ET = (k*p)*(0.46*Tmean+8.13)
-  return(ET)
-}
-
-
-blanney<-b_criddle(evapo$k,evapo$p.daytime.hours.,evapo$Ta)
-
-############
-hagreaves_M <- read.csv("C:/Users/DELALI/Desktop/Hargreaves & MAKKINK  Method.csv")
-View(hagreaves_M)
-har_method<-function(a,Ra,TD,Ta){
-  
-  ETH<-(a*Ra*TD^0.5)*(Ta+17.8)
-  return(ETH)
-}
-
-hargreaves<-har_method(evapo$a,evapo$Ra,evapo$TD,evapo$Ta)
-
-
-###############
-
-#MAKKIK
-
-mak_method<-function(delta,y,N,Rs){
-  ETM<-(0.7*(delta/(delta+y))*(Rs/N))
-        return(ETM)
-  
-}
-  
- 
-makkink<-mak_method(evapo$X..DELTA.constant,evapo$psychometric...,evapo$X...constantN,evapo$Rs)
-
-str(makkink)
-
-
-###########PRIESTLY _tAYLOR####
-
-
-p_Method<-function(alpha,delta,Y,N,Rn) {
-  ETP<- (alpha*(delta/delta+Y))*(Rn/N)
-  return(ETP)
-}
-taylor<-p_Method(evapo$alpha...,evapo$X..DELTA.constant,evapo$psychometric...,evapo$X...constantN,evapo$Rn..Rns.Rnl)
-
-#######
-#
-
-table_eva<-cbind(penman,blanney,hargreaves,makkink,taylor)
-View(table_eva)
-months<-evapo$Date
-
-date<-as.Date(months,"mm")
-tab<-data.frame(months,penman,blanney,hargreaves,makkink,taylor)
-str(table_eva)
 
